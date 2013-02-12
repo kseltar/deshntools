@@ -12,14 +12,16 @@
 # DateUpdate:   02 Feb 2013
 # Version:      0.6
 
+#!/bin/bash
 cd ~/
-
+mkdir /root/downs
+#export
 function f_menu () {
   echo "1) proxy | 2) \"selinux\" y \"firewall\"";
-  echo "3) red";
+  echo "3) red   | 4) \"yumgrade\"/\"actualizar\"";
   echo "";
   echo "";
-  echo "";
+  echo "97) agregrar atrpms repo";
   echo "98) reboot | 99) salir";
 }
 
@@ -83,7 +85,7 @@ function f_ethconf () {
     netnr=0
     while [[ $rednum =~ ^([yY][eE][sS]|[yY]|[sS]|[sS][iI]|[sS][íÍ])$ ]]; do
       ecard="/etc/sysconfig/network-scripts/ifcfg-eth"$netnr"";
-      ecard="/opt/ifcfg-eth"$netnr"";
+      #ecard="/opt/ifcfg-eth"$netnr"";
       echo "Configurando eth"$netnr"."
       echo "eth"$netnr") DEVICE           (eth"$netnr")  "; #: "; read ethdev;
       echo "eth"$netnr") TYPE         (ethernet) "; #): "; read ethtyp;
@@ -94,31 +96,35 @@ function f_ethconf () {
       echo -n "eth"$netnr") DNS1       (172.16.0.2): "; read ethdn1;
       #echo -n "eth"$netnr") DNS2       (172.16.0.2): "; read ethdn2;
       e=`date +"%Y%m%d_%H%M%S"`;
-      narr=$(echo $ethipa | tr "." | tr " ");
-
-      narra=${narr[0]}"\."${narr[1]}"\."${narr[2]}"\.";
+      ec0=`echo $ethipa | cut -d\. -f1`;
+      eca=`echo $ethipa | cut -d\. -f2`;
+      ecb=`echo $ethipa | cut -d\. -f3`;
+      ecc=`echo $ethipa | cut -d\. -f4`;
+      narra=$ec0"."$eca"."$ecb".";
       ethgwy=$narra"1";
       ethbro=$narra"255";
       ethnwk=$narra"0";
       mv $ecard $ecard"-"$e
-      echo "DEVICE=eth"$netnr"" > $ecard
+      echo "####### RESUMEN eth"$netnr" #######";
+      echo "DEVICE=eth"$netnr""; echo "DEVICE=eth"$netnr"" > $ecard;
       ##TYPE=ethernet
-      echo "TYPE=ethernet" >> $ecard
+      echo "TYPE=ethernet"; echo "TYPE=ethernet" >> $ecard;
       ##BOOTPROTO=none,bootp,dhcp
-      echo "BOOTPROTO=none" >> $ecard
+      echo "BOOTPROTO=none"; echo "BOOTPROTO=none" >> $ecard;
       ##ONBOOT=yes,no
-      echo "ONBOOT=yes" >> $ecard
-      echo "IPADDR="$ethipa"" >> $ecard
-      echo "NETMASK=255.255.255.0" >> $ecard
-      echo "GATEWAY="$ethgwy"" >> $ecard
-      echo "NETWORK="$ethnwk"" >> $ecard
-      echo "BROADCAST="$ethbro"" $ecard
-      echo "DNS1="$ethdn1"" >> $ecard
-      echo "NM_CONTROLLED=no" >> $ecard
-      echo "USERCTL=no" >> $ecard
-      echo "DEFROUTE=yes" >> $ecard
-      echo "IPV4_FAILURE_FATAL=yes" >> $ecard
-      echo "" >> $ecard
+      echo "ONBOOT=yes"; echo "ONBOOT=yes" >> $ecard;
+      echo "IPADDR="$ethipa""; echo "IPADDR="$ethipa"" >> $ecard;
+      echo "NETMASK=255.255.255.0"; echo "NETMASK=255.255.255.0" >> $ecard;
+      echo "GATEWAY="$ethgwy""; echo "GATEWAY="$ethgwy"" >> $ecard;
+      echo "NETWORK="$ethnwk""; echo "NETWORK="$ethnwk"" >> $ecard;
+      echo "BROADCAST="$ethbro""; echo "BROADCAST="$ethbro"" >> $ecard;
+      echo "DNS1="$ethdn1""; echo "DNS1="$ethdn1"" >> $ecard;
+      echo "NM_CONTROLLED=no"; echo "NM_CONTROLLED=no" >> $ecard;
+      echo "USERCTL=no"; echo "USERCTL=no" >> $ecard;
+      echo "DEFROUTE=yes"; echo "DEFROUTE=yes" >> $ecard;
+      echo "IPV4_FAILURE_FATAL=yes"; echo "IPV4_FAILURE_FATAL=yes" >> $ecard;
+      echo "" >> $ecard;
+      echo "############################"
       if [ "$netnr" -gt "2" ]; then d="";
         rednum="N";
       else
@@ -126,151 +132,123 @@ function f_ethconf () {
       fi
       netnr=$(( $netnr + 1 ));
     done
-#  fi
-
-#    echo -n "Cuantas tarjetas de red configurara? (1/2): "; read rednum;
-#    if [[ $rednum == "2" ]]; then
-
-
   else
     echo "terminando configuracion de red";
   fi
 }
 
-function hhh () {
-#}
-while [ "$seleccion" != "exit" ]; do
-#  if [ "$seleccion" == "" ]; then
+function f_reboot () {
+  /sbin/reboot
+}
+
+function f_atrpmrepo () {
+  wget -c http://packages.atrpms.net/RPM-GPG-KEY.atrpms -O /root/downs/RPM-GPG-KEY.atrpms
+  atrp="/etc/yum.repos.d/atrpms.repo";
+  if [ ! -f $atrp ]; then
+    rpm --import /root/downs/RPM-GPG-KEY.atrpms
+    echo "" > $atrp
+    echo "[atrpms]" >> $atrp
+    echo "name=Fedora Core $releasever - $basearch - ATrpms" >> $atrp
+    echo "baseurl=http://ftp-stud.fht-esslingen.de/atrpms/dl.atrpms.net/el\$releasever-\$basearch/atrpms/stable/" >> $atrp
+    echo "enable=1" >> $atrp
+    echo "" >> $atrp
+    #echo "[atrpms]" >> $atrp
+    #echo "name=Fedora Core $releasever - $basearch - ATrpms" >> $atrp
+    #echo "baseurl=http://dl.atrpms.net/el$releasever-$basearch/atrpms/stable" >> $atrp
+    #echo "gpgkey=http://ATrpms.net/RPM-GPG-KEY.atrpms" >> $atrp
+    #echo "gpgcheck=0" >> $atrp
+    #echo "" >> $atrp
+  fi
+}
+
+function f_yumgrade () {
+  v=$(sed '3!d' /etc/yum.conf);
+  if [ "$v" == "keepcache=0" ]; then
+    echo ""
+    sed -e '3s/keepcache=0/keepcache=1/' /etc/yum.conf > /etc/yum.confs
+    mv /etc/yum.confs /etc/yum.conf
+  fi
+
+  yum -y update
+  yum -y upgrade
+}
+
+function f_installplus () {
+  yum -y install wget mc elinks xinetd ksh
+  cd /root/downs
+  wget -c https://raw.github.com/kseltar/rvm-rpm/master/RPMS/noarch/rvm-ruby-1.17.6-0.el6.noarch.rpm -O /root/downs/rvm-ruby-1.17.6-0.el6.noarch.rpm
+  wget -c http://ufpr.dl.sourceforge.net/project/webadmin/webmin/1.610/webmin-1.610-1.noarch.rpm -O /root/downs/webmin-1.610-1.noarch.rpm
+  wget -c http://www.princexml.com/download/prince-8.1-4.centos60.x86_64.rpm -O /root/downs/prince-8.1-4.centos60.x86_64.rpm
+  wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm -O /root/downs/epel-release-6-8.noarch.rpm
+  wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm -O /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+  wget -c http://repo.webtatic.com/yum/el6/x86_64/webtatic-release-6-2.noarch.rpm -O /root/downs/webtatic-release-6-2.noarch.rpm
+  wget -c https://bitbucket.org/zhb/iredmail/downloads/iRedMail-0.8.3.tar.bz2 -O /root/downs/iRedMail-0.8.3.tar.bz2
+  wget -c http://ufpr.dl.sourceforge.net/project/phpmyadmin/phpMyAdmin/4.0.0-alpha1/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz -O /root/downs/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz
+  wget -c http://ufpr.dl.sourceforge.net/project/phppgadmin/phpPgAdmin%20%5Bstable%5D/phpPgAdmin-5.0/phpPgAdmin-5.0.4.tar.gz -O /root/downs/phpPgAdmin-5.0.4.tar.gz
+  yum -y install /root/downs/epel-release-6-8.noarch.rpm
+  yum -y install /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+  yum -y install /root/downs/root/downs/webtatic-release-6-2.noarch.rpm
+  yum -y install /root/downs/webmin-1.610-1.noarch.rpm
+  yum -y install /root/downs/prince-8.1-4.centos60.x86_64.rpm
+  f_yumgrade;
+}
+
+function f_esentialpaks () {
+  yum -y install postgresql-pgpool-II.x86_64 postgresql-pgpool-II-recovery.x86_64 postgresql-pgpool-II pgadmin3
+  yum -y install postgresql-devel mysql-devel sqlite-devel.x86_64 db4-devel libcurl-devel.x86_64
+  yum -y install httpd-devel ImageMagick-devel postgresql-pgpool-II-devel.x86_64
+  yum -y install zlib-devel openssl-devel rpm-devel popt-devel file-devel rpm-devel
+  yum -y install gettext-devel kernel-devel gd-devel gpm-devel gtk2-devel
+  yum -y install createrepo rpmrebuild rpmdevtools rpmconf libxml2-python python-deltarpm gitk
+  yum -y install tcl-devel tk-devel libffi-devel libyaml libyaml-devel ncurses-devel readline-devel
+  yum -y install memcached-devel.x86_64 memcached.x86_64 libmemcached-devel.x86_64 libmemcached.x86_64
+  yum -y install samba4.x86_64 samba4-devel.x86_64 samba-winbind.x86_64 samba-swat.x86_64
+  yum -y install samba-domainjoin-gui.x86_64 samba-winbind-devel.x86_64 samba-doc.x86_64
+  yum -y install python-memcached.noarch perl-Cache-Memcached.noarch
+  yum -y install php php-common.x86_64 php-cgi php-pear php-pecl php-cli php-gd php-mysql php-pgsql
+  yum -y install php-sqlite php-xml.x86_64 php-xml.x86_64 php-pecl-memcached.x86_64
+  yum -y install php-pecl-memcache.x86_64 php-odbc.x86_64 php-mcrypt.x86_64 php-mbstring.x86_64
+  yum -y install php-devel.x86_64 php-dba.x86_64 php-soap.x86_64 php-snmp.x86_64
+  yum -y install git-all subversion subversion-tools gcc-c++ compat-readline5
+  yum -y install patch make bzip2 autoconf automake libtool bison readline
+  yum -y groupinstall "Development Tools"
+}
+
+#function hhh () {
+  while [ "$seleccion" != "exit" ]; do
+  #  if [ "$seleccion" == "" ]; then
     echo "";
     f_menu;
 #  fi
-  echo "Seleccion anterior: \""$seleccion"\".";
-  echo -n "Seleccionar un item del menu: "; read seleccion;
-  case $seleccion in
-    "1" | "proxy") f_proxy; ;;
-    "2" | "selinux" | "firewall") f_selinux; ;;
-    "3" | "red" | "nertwork") f_ethconf; ;;
-    "99" | "salir" | "exit" | "quit") seleccion="exit"; ;;
-    *) f_menu; ;;
-  esac
-done
-
-#function hhh () {
-}
-
+    echo "Seleccion anterior: \""$seleccion"\".";
+    echo -n "Seleccionar un item del menu: "; read seleccion;
+    case $seleccion in
+      "1" | "proxy") f_proxy; ;;
+      "2" | "selinux" | "firewall") f_selinux; ;;
+      "3" | "red" | "nertwork") f_ethconf; ;;
+      "4" | "update" | "upgrade" | "actualizar") f_yumgrade; ;;
+      "5" | "installplus" | "instalar") f_installplus; ;;
+      "97" | "atrpms") f_atrpmrepo; ;;
+      "98" | "reboot" | "reiniciar") f_reboot; ;;
+      "99" | "salir" | "exit" | "quit") seleccion="exit"; ;;
+      *) f_menu; ;;
+    esac
+  done
+#}
 
 
 function dasd () {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ifconfig eth0 192.168.1.204 up
-route add default gw 192.168.1.1
-echo "nameserver 8.8.8.8">/etc/resolf.conf
-
-/etc/sysconfig/network-scripts/ifcfg-eth0
-
-#HWADDR=52:54:00:C3:35:4E
-IPV6INIT=no
-BROADCAST=192.168.16.255
-DNS1=172.16.0.2
-#UUID=915e01ed-6c45-4a7f-be61-4a175dcb0151
-BOOTPROTO=none
-NAME=""
-MACADDR=""
-NM_CONTROLLED=yes
-TYPE=Ethernet
-DEVICE=eth0
-PREFIX=24
-NETMASK=255.255.255.0
-MTU=""
-IPADDR=192.168.16.210
-DEFROUTE=yes
-NETWORK=192.168.16.0
-IPV4_FAILURE_FATAL=yes
-ONBOOT=yes
-
-
-
-
-
-
-
 #u=PWD
 #wget http://192.168.16.210/pub/floss/pkgs/y.tar
 #cd /
 #tar xvf $u/y.tar
 #cd $u
-}
-yum -y update
-yum -y upgrade
-yum -y install wget mc elinks xinetd ksh
-
-mkdir /root/downs
-cd /root/downs
-wget -c https://raw.github.com/kseltar/rvm-rpm/master/RPMS/noarch/rvm-ruby-1.17.6-0.el6.noarch.rpm
-###-O /root/downs/rvm-ruby-1.17.6-0.el6.noarch.rpm
-
-wget -c http://ufpr.dl.sourceforge.net/project/webadmin/webmin/1.610/webmin-1.610-1.noarch.rpm -O /root/downs/webmin-1.610-1.noarch.rpm
-wget -c http://www.princexml.com/download/prince-8.1-4.centos60.x86_64.rpm -O /root/downs/prince-8.1-4.centos60.x86_64.rpm
-wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm -O /root/downs/epel-release-6-8.noarch.rpm
-wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm -O /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-wget -c http://repo.webtatic.com/yum/el6/x86_64/webtatic-release-6-2.noarch.rpm -O /root/downs/webtatic-release-6-2.noarch.rpm
-wget -c http://packages.atrpms.net/RPM-GPG-KEY.atrpms -O /root/downs/RPM-GPG-KEY.atrpms
-wget -c https://bitbucket.org/zhb/iredmail/downloads/iRedMail-0.8.3.tar.bz2 -O /root/downs/iRedMail-0.8.3.tar.bz2
-wget -c http://ufpr.dl.sourceforge.net/project/phpmyadmin/phpMyAdmin/4.0.0-alpha1/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz -O /root/downs/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz
-wget -c http://ufpr.dl.sourceforge.net/project/phppgadmin/phpPgAdmin%20%5Bstable%5D/phpPgAdmin-5.0/phpPgAdmin-5.0.4.tar.gz -O /root/downs/phpPgAdmin-5.0.4.tar.gz
-
-yum -y install /root/downs/epel-release-6-8.noarch.rpm
-yum -y install /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-yum -y install /root/downs/root/downs/webtatic-release-6-2.noarch.rpm
-yum -y install /root/downs/webmin-1.610-1.noarch.rpm
-yum -y install /root/downs/prince-8.1-4.centos60.x86_64.rpm
-rpm --import /root/downs/RPM-GPG-KEY.atrpms
-echo "" >
-atrp="/etc/yum.repos.d/atrpms.repo";
-echo "" > $atrp
-echo "[atrpms]" >> $atrp
-echo "name=Fedora Core $releasever - $basearch - ATrpms" >> $atrp
-echo "baseurl=http://dl.atrpms.net/el$releasever-$basearch/atrpms/stable" >> $atrp
-echo "gpgkey=http://ATrpms.net/RPM-GPG-KEY.atrpms" >> $atrp
-echo "gpgcheck=0" >> $atrp
-echo "enable=1" >> $atrp
-echo "" >> $atrp
+#}
 
 
 yum -y update
 yum -y upgrade
 
-yum -y install postgresql-pgpool-II.x86_64 postgresql-pgpool-II-recovery.x86_64 postgresql-pgpool-II pgadmin3
-yum -y install postgresql-devel mysql-devel sqlite-devel.x86_64 db4-devel libcurl-devel.x86_64
-yum -y install httpd-devel ImageMagick-devel postgresql-pgpool-II-devel.x86_64
-yum -y install zlib-devel openssl-devel rpm-devel popt-devel file-devel rpm-devel
-yum -y install gettext-devel kernel-devel gd-devel gpm-devel gtk2-devel
-yum -y install createrepo rpmrebuild rpmdevtools rpmconf libxml2-python python-deltarpm gitk
-yum -y install tcl-devel tk-devel libffi-devel libyaml libyaml-devel ncurses-devel readline-devel
-yum -y install memcached-devel.x86_64 memcached.x86_64 libmemcached-devel.x86_64 libmemcached.x86_64
-yum -y install samba4.x86_64 samba4-devel.x86_64 samba-winbind.x86_64 samba-swat.x86_64
-yum -y install samba-domainjoin-gui.x86_64 samba-winbind-devel.x86_64 samba-doc.x86_64
-yum -y install python-memcached.noarch perl-Cache-Memcached.noarch
-yum -y install php php-common.x86_64 php-cgi php-pear php-pecl php-cli php-gd php-mysql php-pgsql
-yum -y install php-sqlite php-xml.x86_64 php-xml.x86_64 php-pecl-memcached.x86_64
-yum -y install php-pecl-memcache.x86_64 php-odbc.x86_64 php-mcrypt.x86_64 php-mbstring.x86_64
-yum -y install php-devel.x86_64 php-dba.x86_64 php-soap.x86_64 php-snmp.x86_64
-yum -y install git-all subversion subversion-tools gcc-c++ compat-readline5
-yum -y install patch make bzip2 autoconf automake libtool bison readline
-yum -y groupinstall "Development Tools"
 #yum -y groupinstall desktop
 #}
 
@@ -282,7 +260,7 @@ cd iRedMail-0.8.3
 bash iRedMail.sh
 #}
 
-function hhh () {
+#function hhh () {
 #yum -y update
 #yum -y upgrade
 
