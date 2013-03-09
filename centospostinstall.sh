@@ -13,16 +13,48 @@
 # Version:      0.6
 
 #!/bin/bash
+### curl -O http://192.168.16.14/centosinstall.sh & /bin/chmod 777 ,/centosinstall.sh & ./centosinstall.sh
 cd ~/
-mkdir /root/downs
-#export
+export rtinst="/root/0rtinst";
+export rtdown=$rtinst"/downs";
+export rtback=$rtinst"/backups";
+export rtntdr="/etc/sysconfig/network-scripts"
+export yumrepo="/etc/yum.repos.d";
+export yumconf="/etc/yum.conf";
+mkdir -p {$rtinst,$rtdown,$rtback"/"{etc/{sysconfig/{network-scripts},udev/{rules.d},yum.repos.d},root,var/{cache/yum,lib,www}}}
+export rtetc=$rtback"/etc"
+export rtsyc=$rtetc"/sysconfig"
+export rtsyn=$rtsyc"/network-scripts"
+export rtymr=$rtetc"/yum.repos.d"
+export rtudv=$rtetc"/udev"
+export rtudr=$rtudv"/rules.d"
+export rtvar=$rtback"/var"
+export rtlib=$rtvar"/lib"
+export rtche=$rtvar"/cache"
+export rtwww=$rtvar"/www"
+export rtrot=$rtback"/root"
+
+function f_date () {
+  v_date=`date +"%Y%m%d_%H%M%S"`;
+}
+
 function f_menu () {
+  echo "0) volver a descarcar este script";
   echo "1) proxy | 2) \"selinux\" y \"firewall\"";
   echo "3) red   | 4) \"yumgrade\"/\"actualizar\"";
   echo "";
   echo "";
   echo "97) agregrar atrpms repo";
   echo "98) reboot | 99) salir";
+}
+
+function f_this_install () {
+  da=$PWD
+  cd $rtdown
+  /usr/bin/curl -O http://192.168.16.14/centosinstall.sh
+  chmod 777 $rtdown/centosinstall.sh
+  $rtdown/centosinstall.sh
+  cd $da
 }
 
 function f_proxy () {
@@ -42,12 +74,14 @@ function f_proxy () {
     else
       confprx="export";
     fi
+    f_date;
+    cp /etc/bashrc $rtetc"/bashrc-"$v_date".old"
     v=$(cat /etc/bashrc | grep -m 1 "export prx" | cut -c1-10);
-    if [ "$v" != "export prx" ]; then
+    if [ "$v" != "export prx=\"\"" ]; then
       echo "" >> /etc/bashrc
       echo "" >> /etc/bashrc
       echo "export prx=\"http://"$pxyuser":"$pxypass"@"$pxysrvr":"$pxyport"/\"" >> /etc/bashrc
-      echo $confprx >> /etc/bashrc
+      echo $confprx" prx=\"\"" >> /etc/bashrc
       echo "export ftp_proxy=\$prx" >> /etc/bashrc
       echo "export http_proxy=\$prx" >> /etc/bashrc
       echo "export https_proxy=\$prx" >> /etc/bashrc
@@ -62,6 +96,8 @@ function f_selinux () {
   echo -n "Requerira desactivar la proteccion SELinux? (S/N): "; read slnreq;
   echo -n "Requerira desactivar la proteccion Firewall? (S/N): "; read fwlreq;
   if [[ $slnreq =~ ^([yY][eE][sS]|[yY]|[sS]|[sS][iI]|[sS][íÍ])$ ]]; then
+    f_date;
+    tar cvf $rtsyc"/selinux-"$v_date".tar" /etc/sysconfig/selinux
     v=$(sed '7!d' /etc/sysconfig/selinux);
     if [ "$v" == "SELINUX=enforcing" ]; then
       echo ""
@@ -84,7 +120,8 @@ function f_ethconf () {
   if [[ $rednum =~ ^([yY][eE][sS]|[yY]|[sS]|[sS][iI]|[sS][íÍ])$ ]]; then
     netnr=0
     while [[ $rednum =~ ^([yY][eE][sS]|[yY]|[sS]|[sS][iI]|[sS][íÍ])$ ]]; do
-      ecard="/etc/sysconfig/network-scripts/ifcfg-eth"$netnr"";
+      phcard="ifcfg-eth"$netnr"";
+      ecard=$rtntdr"/"$phcard"";
       #ecard="/opt/ifcfg-eth"$netnr"";
       echo "Configurando eth"$netnr"."
       echo "eth"$netnr") DEVICE           (eth"$netnr")  "; #: "; read ethdev;
@@ -95,7 +132,6 @@ function f_ethconf () {
       #echo -n "eth"$netnr") GATEWAY   (192.168.X.X): "; read ethgwy;
       echo -n "eth"$netnr") DNS1       (172.16.0.2): "; read ethdn1;
       #echo -n "eth"$netnr") DNS2       (172.16.0.2): "; read ethdn2;
-      e=`date +"%Y%m%d_%H%M%S"`;
       ec0=`echo $ethipa | cut -d\. -f1`;
       eca=`echo $ethipa | cut -d\. -f2`;
       ecb=`echo $ethipa | cut -d\. -f3`;
@@ -104,7 +140,10 @@ function f_ethconf () {
       ethgwy=$narra"1";
       ethbro=$narra"255";
       ethnwk=$narra"0";
-      mv $ecard $ecard"-"$e
+      f_date;
+      mv $rtntdr"/"$phcard $rtsyn"/"$phcard"-"$v_date".old";
+      mv /etc/resolv.conf $rtetc"/resolv.conf-"$v_date".old";
+      mv /etc/resolv.conf $rtetc"/resolv.conf-"$v_date".old";
       echo "####### RESUMEN eth"$netnr" #######";
       echo "DEVICE=eth"$netnr""; echo "DEVICE=eth"$netnr"" > $ecard;
       ##TYPE=ethernet
@@ -135,6 +174,7 @@ function f_ethconf () {
   else
     echo "terminando configuracion de red";
   fi
+  /etc/init.d/network restart
 }
 
 function f_reboot () {
@@ -142,10 +182,10 @@ function f_reboot () {
 }
 
 function f_atrpmrepo () {
-  wget -c http://packages.atrpms.net/RPM-GPG-KEY.atrpms -O /root/downs/RPM-GPG-KEY.atrpms
-  atrp="/etc/yum.repos.d/atrpms.repo";
+  wget -c http://packages.atrpms.net/RPM-GPG-KEY.atrpms -O $rtdown/RPM-GPG-KEY.atrpms
+  atrp=$yumrepo"/atrpms.repo";
   if [ ! -f $atrp ]; then
-    rpm --import /root/downs/RPM-GPG-KEY.atrpms
+    rpm --import $rtdown/RPM-GPG-KEY.atrpms
     echo "" > $atrp
     echo "[atrpms]" >> $atrp
     echo "name=Fedora Core $releasever - $basearch - ATrpms" >> $atrp
@@ -161,12 +201,33 @@ function f_atrpmrepo () {
   fi
 }
 
+function f_mariadb_repo () {
+  wget -c http://yum.mariadb.org/RPM-GPG-KEY-MariaDB -O $rtdown/RPM-GPG-KEY-MariaDB
+  mdrp=$yumrepo"/mariadb.repo";
+  if [ ! -f $mdrp ]; then
+    rpm --import $rtdown/RPM-GPG-KEY-MariaDB
+    echo "" > $mdrp
+    echo "# MariaDB 10.0 CentOS repository list - created 2013-03-08 15:30 UTC" >> $mdrp
+    echo "# http://mariadb.org/mariadb/repositories/" >> $mdrp
+    echo "[mariadb]" >> $mdrp
+    echo "name = MariaDB" >> $mdrp
+    echo "baseurl = http://yum.mariadb.org/10.0/centos6-amd64" >> $mdrp
+    echo "enable=1" >> $mdrp
+    echo "gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB" >> $mdrp
+    echo "gpgcheck=1" >> $mdrp
+    echo "" >> $mdrp
+  fi
+}
+
 function f_yumgrade () {
-  v=$(sed '3!d' /etc/yum.conf);
+  f_date;
+  tar cvf $rtetc"/yumcfg-"$v_date".tar" /etc/yum*
+  #cp $yumconf $rtetc"/yum.conf-"$v_date".old"
+  v=$(sed '3!d' $yumconf);
   if [ "$v" == "keepcache=0" ]; then
     echo ""
-    sed -e '3s/keepcache=0/keepcache=1/' /etc/yum.conf > /etc/yum.confs
-    mv /etc/yum.confs /etc/yum.conf
+    sed -e '3s/keepcache=0/keepcache=1/' $yumconf > $yumconf"s"
+    mv $yumconf"s" $yumconf
   fi
 
   yum -y update
@@ -175,25 +236,27 @@ function f_yumgrade () {
 
 function f_installplus () {
   yum -y install wget mc elinks xinetd ksh
-  cd /root/downs
-  wget -c https://raw.github.com/kseltar/rvm-rpm/master/RPMS/noarch/rvm-ruby-1.17.6-0.el6.noarch.rpm -O /root/downs/rvm-ruby-1.17.6-0.el6.noarch.rpm
-  wget -c http://ufpr.dl.sourceforge.net/project/webadmin/webmin/1.610/webmin-1.610-1.noarch.rpm -O /root/downs/webmin-1.610-1.noarch.rpm
-  wget -c http://www.princexml.com/download/prince-8.1-4.centos60.x86_64.rpm -O /root/downs/prince-8.1-4.centos60.x86_64.rpm
-  wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm -O /root/downs/epel-release-6-8.noarch.rpm
-  wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm -O /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-  wget -c http://repo.webtatic.com/yum/el6/x86_64/webtatic-release-6-2.noarch.rpm -O /root/downs/webtatic-release-6-2.noarch.rpm
-  wget -c https://bitbucket.org/zhb/iredmail/downloads/iRedMail-0.8.3.tar.bz2 -O /root/downs/iRedMail-0.8.3.tar.bz2
-  wget -c http://ufpr.dl.sourceforge.net/project/phpmyadmin/phpMyAdmin/4.0.0-alpha1/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz -O /root/downs/phpMyAdmin-4.0.0-alpha1-all-languages.tar.gz
-  wget -c http://ufpr.dl.sourceforge.net/project/phppgadmin/phpPgAdmin%20%5Bstable%5D/phpPgAdmin-5.0/phpPgAdmin-5.0.4.tar.gz -O /root/downs/phpPgAdmin-5.0.4.tar.gz
-  yum -y install /root/downs/epel-release-6-8.noarch.rpm
-  yum -y install /root/downs/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
-  yum -y install /root/downs/root/downs/webtatic-release-6-2.noarch.rpm
-  yum -y install /root/downs/webmin-1.610-1.noarch.rpm
-  yum -y install /root/downs/prince-8.1-4.centos60.x86_64.rpm
+  f_mariadb_repo;
+  cd $rtdown
+  wget -c https://raw.github.com/kseltar/rvm-rpm/master/RPMS/noarch/rvm-ruby-1.17.6-0.el6.noarch.rpm -O $rtdown/rvm-ruby-1.17.6-0.el6.noarch.rpm
+  wget -c http://ufpr.dl.sourceforge.net/project/webadmin/webmin/1.610/webmin-1.610-1.noarch.rpm -O $rtdown/webmin-1.610-1.noarch.rpm
+  wget -c http://www.princexml.com/download/prince-8.1-4.centos60.x86_64.rpm -O $rtdown/prince-8.1-4.centos60.x86_64.rpm
+  wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm -O $rtdown/epel-release-6-8.noarch.rpm
+  wget -c http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm -O $rtdown/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+  wget -c http://repo.webtatic.com/yum/el6/x86_64/webtatic-release-6-2.noarch.rpm -O $rtdown/webtatic-release-6-2.noarch.rpm
+  wget -c https://bitbucket.org/zhb/iredmail/downloads/iRedMail-0.8.3.tar.bz2 -O $rtdown/iRedMail-0.8.3.tar.bz2
+  wget -c http://ufpr.dl.sourceforge.net/project/phpmyadmin/phpMyAdmin/4.0.0-beta1/phpMyAdmin-4.0.0-beta1-all-languages.tar.gz -O $rtdown/phpMyAdmin-4.0.0-beta1-all-languages.tar.gz
+  wget -c http://ufpr.dl.sourceforge.net/project/phppgadmin/phpPgAdmin%20%5Bstable%5D/phpPgAdmin-5.0/phpPgAdmin-5.0.4.tar.gz -O $rtdown/phpPgAdmin-5.0.4.tar.gz
+  rpm -ivh $rtdown/epel-release-6-8.noarch.rpm
+  rpm -ivh $rtdown/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+  rpm -ivh $rtdown/webtatic-release-6-2.noarch.rpm
+  rpm -ivh $rtdown/webmin-1.610-1.noarch.rpm
+  rpm -ivh $rtdown/prince-8.1-4.centos60.x86_64.rpm
   f_yumgrade;
 }
 
 function f_esentialpaks () {
+  yum -y install MariaDB* galera
   yum -y install postgresql-pgpool-II.x86_64 postgresql-pgpool-II-recovery.x86_64 postgresql-pgpool-II pgadmin3
   yum -y install postgresql-devel mysql-devel sqlite-devel.x86_64 db4-devel libcurl-devel.x86_64
   yum -y install httpd-devel ImageMagick-devel postgresql-pgpool-II-devel.x86_64
@@ -205,10 +268,14 @@ function f_esentialpaks () {
   yum -y install samba4.x86_64 samba4-devel.x86_64 samba-winbind.x86_64 samba-swat.x86_64
   yum -y install samba-domainjoin-gui.x86_64 samba-winbind-devel.x86_64 samba-doc.x86_64
   yum -y install python-memcached.noarch perl-Cache-Memcached.noarch
-  yum -y install php php-common.x86_64 php-cgi php-pear php-pecl php-cli php-gd php-mysql php-pgsql
-  yum -y install php-sqlite php-xml.x86_64 php-xml.x86_64 php-pecl-memcached.x86_64
-  yum -y install php-pecl-memcache.x86_64 php-odbc.x86_64 php-mcrypt.x86_64 php-mbstring.x86_64
-  yum -y install php-devel.x86_64 php-dba.x86_64 php-soap.x86_64 php-snmp.x86_64
+  #yum -y install php php-common.x86_64 php-cgi php-pear php-pecl php-cli php-gd php-mysql php-pgsql
+  yum -y install php54w php54w-common.x86_64 php54w-cgi php54w-pear php54w-pecl php54w-cli php54w-gd php54w-mysql php54w-pgsql
+  #yum -y install php-sqlite php-xml.x86_64 php-xmlrpc.x86_64 php-pecl-memcached.x86_64
+  yum -y install php54w-xml.x86_64 php54w-xmlrpc.x86_64 php54w-pecl-memcached.x86_64
+  #yum -y install php-pecl-memcache.x86_64 php-odbc.x86_64 php-mcrypt.x86_64 php-mbstring.x86_64
+  yum -y install php54w-pecl-memcache.x86_64 php54w-odbc.x86_64 php54w-mcrypt.x86_64 php54w-mbstring.x86_64
+  #yum -y install php-devel.x86_64 php-dba.x86_64 php-soap.x86_64 php-snmp.x86_64
+  yum -y install php54w-devel.x86_64 php54w-dba.x86_64 php54w-soap.x86_64 php54w-snmp.x86_64
   yum -y install git-all subversion subversion-tools gcc-c++ compat-readline5
   yum -y install patch make bzip2 autoconf automake libtool bison readline
   yum -y groupinstall "Development Tools"
@@ -218,53 +285,7 @@ function f_desktop () {
   yum groupinstall "Desktop" "Desktop Platform" "X Window System" "Fonts"
 }
 
-#function hhh () {
-  while [ "$seleccion" != "exit" ]; do
-  #  if [ "$seleccion" == "" ]; then
-    echo "";
-    f_menu;
-#  fi
-    echo "Seleccion anterior: \""$seleccion"\".";
-    echo -n "Seleccionar un item del menu: "; read seleccion;
-    case $seleccion in
-      "1" | "proxy") f_proxy; ;;
-      "2" | "selinux" | "firewall") f_selinux; ;;
-      "3" | "red" | "nertwork") f_ethconf; ;;
-      "4" | "update" | "upgrade" | "actualizar") f_yumgrade; ;;
-      "5" | "installplus" | "instalar") f_installplus; ;;
-      "6" | "isnstallplus" | "isnstalar") f_desktop; ;;
-      "7" | "sinstallplus" | "insstalar") f_esentialpaks; ;;
-      "97" | "atrpms") f_atrpmrepo; ;;
-      "98" | "reboot" | "reiniciar") f_reboot; ;;
-      "99" | "salir" | "exit" | "quit") seleccion="exit"; ;;
-      *) f_menu; ;;
-    esac
-  done
-#}
-
-
-function dasd () {
-#u=PWD
-#wget http://192.168.16.210/pub/floss/pkgs/y.tar
-#cd /
-#tar xvf $u/y.tar
-#cd $u
-#}
-
-Desktop
-Minimal Desktop
-Minimal
-Basic Server
-Database Server
-Web Server
-Virual Host
-Software Development Workstation
-
------
-function f_yumgrp01applications () {
-  yum -y groupinstall "Applications";
-}
-
+function f_yumgrp0100applications () {
   yum -y groupinstall "Applications"
 
 
@@ -275,7 +296,9 @@ function f_yumgrp01applications () {
   yum -y groupinstall "Office Suite and Productivity"
   yum -y groupinstall "TeX Support"
   yum -y groupinstall "Technical Writing"
------
+}
+
+function f_yumgrp0200basesys () {
 
   yum -y groupinstall "Base System"
 
@@ -307,18 +330,18 @@ function f_yumgrp01applications () {
   yum -y groupinstall "iSCSI Storage Client"
 
 
------
+}
 
+function f_yumgrp0300databases () {
   yum -y groupinstall "Databases"
 
   yum -y groupinstall "MySQL Database client"
   yum -y groupinstall "MySQL Database server"
   yum -y groupinstall "PostgreSQL Database client"
   yum -y groupinstall "PostgreSQL Database server"
+}
 
-
------
-
+function f_yumgrp0400desktops () {
   yum -y groupinstall "Desktops"
 
   yum -y groupinstall "Desktop"
@@ -332,10 +355,9 @@ function f_yumgrp01applications () {
   yum -y groupinstall "Legacy X Window System compatibility"
   yum -y groupinstall "Remote Desktop Clients"
   yum -y groupinstall "X Window System"
+}
 
-
------
-
+function f_yumgrp0500development () {
   yum -y groupinstall "Development"
 
   yum -y groupinstall "Additional Development"
@@ -343,162 +365,285 @@ function f_yumgrp01applications () {
   yum -y groupinstall "Development tools"
   yum -y groupinstall "Eclipse"
   yum -y groupinstall "Server Platform Development"
+}
 
-
------
-
+function f_yumgrp0600highavailability () {
   yum -y groupinstall "High Availability"
 
   yum -y groupinstall "High Availability"
   yum -y groupinstall "High Availability Management"
+}
 
-
------
-
+function f_yumgrp0700languages () {
   yum -y groupinstall "Languages"
 
+#   Afrikaans Support [af]
   yum -y groupinstall "Afrikaans Support"
+#   Albanian Support [sq]
   yum -y groupinstall "Albanian Support"
+#   Amazigh Support [ber]
+  yum -y groupinstall "Amazigh Support"
+#   Arabic Support [ar]
   yum -y groupinstall "Arabic Support"
+#   Armenian Support [hy]
   yum -y groupinstall "Armenian Support"
+#   Assamese Support [as]
   yum -y groupinstall "Assamese Support"
+#   Azerbaijani Support [az]
   yum -y groupinstall "Azerbaijani Support"
+#   Basque Support [eu]
   yum -y groupinstall "Basque Support"
+#   Belarusian Support [be]
   yum -y groupinstall "Belarusian Support"
+#   Bengali Support [bn]
   yum -y groupinstall "Bengali Support"
+#   Bhutanese Support [dz]
   yum -y groupinstall "Bhutanese Support"
+#   Brazilian Portuguese Support [pt_BR]
   yum -y groupinstall "Brazilian Portuguese Support"
+#   Breton Support [br]
   yum -y groupinstall "Breton Support"
+#   Bulgarian Support [bg]
   yum -y groupinstall "Bulgarian Support"
+#   Catalan Support [ca]
   yum -y groupinstall "Catalan Support"
+#   Chhattisgarhi Support [hne]
   yum -y groupinstall "Chhattisgarhi Support"
+#   Chichewa Support [ny]
   yum -y groupinstall "Chichewa Support"
+#   Chinese Support [zh]
   yum -y groupinstall "Chinese Support"
+#   Coptic Support [cop]
   yum -y groupinstall "Coptic Support"
+#   Croatian Support [hr]
   yum -y groupinstall "Croatian Support"
+#   Czech Support [cs]
   yum -y groupinstall "Czech Support"
+#   Danish Support [da]
   yum -y groupinstall "Danish Support"
+#   Dutch Support [nl]
+  yum -y groupinstall "Dutch Support"
+#   English (UK) Support [en_GB]
   yum -y groupinstall "English (UK) Support"
+#   Esperanto Support [eo]
   yum -y groupinstall "Esperanto Support"
+#   Estonian Support [et]
+  yum -y groupinstall "Estonian Support"
+#   Ethiopic Support [am]
   yum -y groupinstall "Ethiopic Support"
+#   Faroese Support [fo]
   yum -y groupinstall "Faroese Support"
+#   Fijian Support [fj]
   yum -y groupinstall "Fijian Support"
+#   Filipino Support [fil]
   yum -y groupinstall "Filipino Support"
+#   Finnish Support [fi]
   yum -y groupinstall "Finnish Support"
+#   French Support [fr]
   yum -y groupinstall "French Support"
+#   Frisian Support [fy]
   yum -y groupinstall "Frisian Support"
+#   Friulian Support [fur]
   yum -y groupinstall "Friulian Support"
+#   Gaelic Support [gd]
   yum -y groupinstall "Gaelic Support"
+#   Galician Support [gl]
   yum -y groupinstall "Galician Support"
+#   Georgian Support [ka]
   yum -y groupinstall "Georgian Support"
+#   German Support [de]
   yum -y groupinstall "German Support"
+#   Greek Support [el]
   yum -y groupinstall "Greek Support"
+#   Gujarati Support [gu]
   yum -y groupinstall "Gujarati Support"
+#   Hebrew Support [he]
   yum -y groupinstall "Hebrew Support"
+#   Hiligaynon Support [hil]
   yum -y groupinstall "Hiligaynon Support"
+#   Hindi Support [hi]
   yum -y groupinstall "Hindi Support"
+#   Hungarian Support [hu]
   yum -y groupinstall "Hungarian Support"
+#   Icelandic Support [is]
   yum -y groupinstall "Icelandic Support"
+#   Indonesian Support [id]
   yum -y groupinstall "Indonesian Support"
+#   Interlingua Support [ia]
+  yum -y groupinstall "Interlingua Support"
+#   Inuktitut Support [iu]
   yum -y groupinstall "Inuktitut Support"
+#   Irish Support [ga]
   yum -y groupinstall "Irish Support"
+#   Italian Support [it]
   yum -y groupinstall "Italian Support"
+#   Japanese Support [ja]
   yum -y groupinstall "Japanese Support"
+#   Kannada Support [kn]
   yum -y groupinstall "Kannada Support"
+#   Kashmiri Support [ks]
   yum -y groupinstall "Kashmiri Support"
+#   Kashubian Support [csb]
   yum -y groupinstall "Kashubian Support"
+#   Kazakh Support [kk]
   yum -y groupinstall "Kazakh Support"
+#   Khmer Support [km]
   yum -y groupinstall "Khmer Support"
+#   Kinyarwanda Support [rw]
   yum -y groupinstall "Kinyarwanda Support"
+#   Konkani Support [kok]
   yum -y groupinstall "Konkani Support"
+#   Korean Support [ko]
   yum -y groupinstall "Korean Support"
+#   Kurdish Support [ku]
   yum -y groupinstall "Kurdish Support"
+#   Lao Support [lo]
   yum -y groupinstall "Lao Support"
+#   Latin Support [la]
   yum -y groupinstall "Latin Support"
+#   Latvian Support [lv]
   yum -y groupinstall "Latvian Support"
+#   Lithuanian Support [lt]
   yum -y groupinstall "Lithuanian Support"
+#   Low Saxon Support [nds]
   yum -y groupinstall "Low Saxon Support"
+#   Luxembourgish Support [lb]
   yum -y groupinstall "Luxembourgish Support"
+#   Macedonian Support [mk]
   yum -y groupinstall "Macedonian Support"
+#   Maithili Support [mai]
   yum -y groupinstall "Maithili Support"
+#   Malagasy Support [mg]
   yum -y groupinstall "Malagasy Support"
+#   Malay Support [ms]
   yum -y groupinstall "Malay Support"
+#   Malayalam Support [ml]
   yum -y groupinstall "Malayalam Support"
+#   Maltese Support [mt]
   yum -y groupinstall "Maltese Support"
+#   Manx Support [gv]
   yum -y groupinstall "Manx Support"
+#   Maori Support [mi]
   yum -y groupinstall "Maori Support"
+#   Marathi Support [mr]
   yum -y groupinstall "Marathi Support"
+#   Mongolian Support [mn]
   yum -y groupinstall "Mongolian Support"
+#   Myanmar (Burmese) Support [my]
   yum -y groupinstall "Myanmar (Burmese) Support"
+#   Nepali Support [ne]
   yum -y groupinstall "Nepali Support"
+#   Northern Sotho Support [nso]
   yum -y groupinstall "Northern Sotho Support"
+#   Norwegian Support [nb]
   yum -y groupinstall "Norwegian Support"
+#   Occitan Support [oc]
   yum -y groupinstall "Occitan Support"
+#   Oriya Support [or]
   yum -y groupinstall "Oriya Support"
+#   Persian Support [fa]
   yum -y groupinstall "Persian Support"
+#   Polish Support [pl]
   yum -y groupinstall "Polish Support"
+#   Portuguese Support [pt]
   yum -y groupinstall "Portuguese Support"
+#   Punjabi Support [pa]
   yum -y groupinstall "Punjabi Support"
+#   Romanian Support [ro]
   yum -y groupinstall "Romanian Support"
+#   Russian Support [ru]
   yum -y groupinstall "Russian Support"
+#   Sanskrit Support [sa]
   yum -y groupinstall "Sanskrit Support"
+#   Sardinian Support [sc]
   yum -y groupinstall "Sardinian Support"
+#   Serbian Support [sr]
   yum -y groupinstall "Serbian Support"
+#   Sindhi Support [sd]
   yum -y groupinstall "Sindhi Support"
+#   Sinhala Support [si]
   yum -y groupinstall "Sinhala Support"
+#   Slovak Support [sk]
   yum -y groupinstall "Slovak Support"
+#   Slovenian Support [sl]
   yum -y groupinstall "Slovenian Support"
+#   Somali Support [nr]
   yum -y groupinstall "Somali Support"
+#   Southern Ndebele Support [nr]
   yum -y groupinstall "Southern Ndebele Support"
+#   Southern Sotho Support [st]
   yum -y groupinstall "Southern Sotho Support"
+#   Spanish Support [es]
   yum -y groupinstall "Spanish Support"
+#   Swahili Support [sw]
   yum -y groupinstall "Swahili Support"
+#   Swati Support [ss]
   yum -y groupinstall "Swati Support"
+#   Swedish Support [sv]
   yum -y groupinstall "Swedish Support"
+#   Tagalog Support [tl]
   yum -y groupinstall "Tagalog Support"
+#   Tajik Support [tg]
   yum -y groupinstall "Tajik Support"
+#   Tamil Support [ta]
   yum -y groupinstall "Tamil Support"
+#   Telugu Support [te]
   yum -y groupinstall "Telugu Support"
+#   Tetum Support [tet]
   yum -y groupinstall "Tetum Support"
+#   Thai Support [th]
   yum -y groupinstall "Thai Support"
+#   Tibetan Support [bo]
   yum -y groupinstall "Tibetan Support"
+#   Tsonga Support [ts]
   yum -y groupinstall "Tsonga Support"
+#   Tswana Support [tn]
   yum -y groupinstall "Tswana Support"
+#   Turkish Support [tr]
   yum -y groupinstall "Turkish Support"
+#   Turkmen Support [tk]
   yum -y groupinstall "Turkmen Support"
+#   Ukrainian Support [uk]
   yum -y groupinstall "Ukrainian Support"
+#   Upper Sorbian Support [hsb]
   yum -y groupinstall "Upper Sorbian Support"
+#   Urdu Support [ur]
   yum -y groupinstall "Urdu Support"
+#   Uzbek Support [uz]
   yum -y groupinstall "Uzbek Support"
+#   Venda Support [ve]
   yum -y groupinstall "Venda Support"
+#   Vietnamese Support [vi]
   yum -y groupinstall "Vietnamese Support"
+#   Walloon Support [wa]
   yum -y groupinstall "Walloon Support"
+#   Welsh Support [cy]
   yum -y groupinstall "Welsh Support"
+#   Xhosa Support [xh]
   yum -y groupinstall "Xhosa Support"
+#   Zulu Support [zu]
   yum -y groupinstall "Zulu Support"
+}
 
-
------
-
+function f_yumgrp0800loadbalancer () {
   yum -y groupinstall "Load Balancer"
 
   yum -y groupinstall "Load Balancer"
+}
 
------
-
+function f_yumgrp0900resilientstorage () {
   yum -y groupinstall "Resilient Storage"
 
   yum -y groupinstall "Resilient Storage"
+}
 
------
-
+function f_yumgrp1000scalablefilesystem () {
   yum -y groupinstall "Scalable Filesystem Support"
 
   yum -y groupinstall "Scalable Filesystem"
+}
 
-
------
-
+function f_yumgrp1100servers () {
   yum -y groupinstall "Servers"
 
   yum -y groupinstall "Backup Server"
@@ -513,10 +658,9 @@ function f_yumgrp01applications () {
   yum -y groupinstall "Print Server"
   yum -y groupinstall "Server Platform"
   yum -y groupinstall "System administration tools"
+}
 
-
------
-
+function f_yumgrp1200systemmanagement () {
   yum -y groupinstall "System Management"
 
   yum -y groupinstall "Messaging Client Support"
@@ -524,57 +668,70 @@ function f_yumgrp01applications () {
   yum -y groupinstall "System Management"
   yum -y groupinstall "System Management and Messaging Server support"
   yum -y groupinstall "Web-Based Enterprise Management"
+}
 
------
-
+function f_yumgrp1300virtualization () {
   yum -y groupinstall "Virtualization"
 
   yum -y groupinstall "Virtualization"
   yum -y groupinstall "Virtualization Client"
   yum -y groupinstall "Virtualization Platform"
   yum -y groupinstall "Virtualization Tools"
+}
 
------
-
+function f_yumgrp1400webservices () {
   yum -y groupinstall "Web Services"
 
   yum -y groupinstall "PHP Support"
   yum -y groupinstall "TurboGears application framework"
   yum -y groupinstall "Web Server"
   yum -y groupinstall "Web Servlet Engine"
+}
 
-   Arabic Support [ar]
-   Armenian Support [hy]
-   Assamese Support [as]
-   Bengali Support [bn]
-   Bhutanese Support [dz]
-   Chinese Support [zh]
-   Ethiopic Support [am]
-   Georgian Support [ka]
-   Gujarati Support [gu]
-   Hebrew Support [he]
-   Hindi Support [hi]
-   Inuktitut Support [iu]
-   Japanese Support [ja]
-   Kannada Support [kn]
-   Khmer Support [km]
-   Konkani Support [kok]
-   Korean Support [ko]
-   Kurdish Support [ku]
-   Lao Support [lo]
-   Maithili Support [mai]
-   Malayalam Support [ml]
-   Marathi Support [mr]
-   Myanmar (Burmese) Support [my]
-   Oriya Support [or]
-   Punjabi Support [pa]
-   Sinhala Support [si]
-   Tajik Support [tg]
-   Tamil Support [ta]
-   Telugu Support [te]
-   Thai Support [th]
-   Urdu Support [ur]
-   Venda Support [ve]
+#function hhh () {
+  while [ "$seleccion" != "exit" ]; do
+  #  if [ "$seleccion" == "" ]; then
+    echo "";
+    f_menu;
+#  fi
+    echo "Seleccion anterior: \""$seleccion"\".";
+    echo -n "Seleccionar un item del menu: "; read seleccion;
+    case $seleccion in
+      "0" | "reload" | "actualizar") f_this_install; ;;
+      "1" | "proxy") f_proxy; ;;
+      "2" | "selinux" | "firewall") f_selinux; ;;
+      "3" | "red" | "nertwork") f_ethconf; ;;
+      "4" | "update" | "upgrade" | "actualizar") f_yumgrade; ;;
+      "5" | "installplus" | "instalar") f_installplus; ;;
+      "6" | "isnstallplus" | "isnstalar") f_desktop; ;;
+      "7" | "sinstallplus" | "insstalar") f_esentialpaks; ;;
+      "97" | "atrpms") f_atrpmrepo; ;;
+      "98" | "reboot" | "reiniciar") f_reboot; ;;
+      "99" | "q" | "salir" | "exit" | "quit") seleccion="exit"; ;;
+      *) f_menu; ;;
+    esac
+  done
+#}
+
+
+function dasd () {
+#u=PWD
+#wget http://192.168.16.210/pub/floss/pkgs/y.tar
+#cd /
+#tar xvf $u/y.tar
+#cd $u
+#}
+
+Desktop
+Minimal Desktop
+Minimal
+Basic Server
+Database Server
+Web Server
+Virual Host
+Software Development Workstation
+
+-----
 Available Groups:
    Backup Client
    Backup Server
@@ -606,96 +763,6 @@ Available Groups:
    Web Servlet Engine
    Web-Based Enterprise Management
 Available Language Groups:
-   Afrikaans Support [af]
-   Albanian Support [sq]
-   Amazigh Support [ber]
-   Azerbaijani Support [az]
-   Basque Support [eu]
-   Belarusian Support [be]
-   Brazilian Portuguese Support [pt_BR]
-   Breton Support [br]
-   Bulgarian Support [bg]
-   Catalan Support [ca]
-   Chhattisgarhi Support [hne]
-   Chichewa Support [ny]
-   Coptic Support [cop]
-   Croatian Support [hr]
-   Czech Support [cs]
-   Danish Support [da]
-   Dutch Support [nl]
-   English (UK) Support [en_GB]
-   Esperanto Support [eo]
-   Estonian Support [et]
-   Faroese Support [fo]
-   Fijian Support [fj]
-   Filipino Support [fil]
-   Finnish Support [fi]
-   French Support [fr]
-   Frisian Support [fy]
-   Friulian Support [fur]
-   Gaelic Support [gd]
-   Galician Support [gl]
-   German Support [de]
-   Greek Support [el]
-   Hiligaynon Support [hil]
-   Hungarian Support [hu]
-   Icelandic Support [is]
-   Indonesian Support [id]
-   Interlingua Support [ia]
-   Irish Support [ga]
-   Italian Support [it]
-   Kashmiri Support [ks]
-   Kashubian Support [csb]
-   Kazakh Support [kk]
-   Kinyarwanda Support [rw]
-   Latin Support [la]
-   Latvian Support [lv]
-   Lithuanian Support [lt]
-   Low Saxon Support [nds]
-   Luxembourgish Support [lb]
-   Macedonian Support [mk]
-   Malagasy Support [mg]
-   Malay Support [ms]
-   Maltese Support [mt]
-   Manx Support [gv]
-   Maori Support [mi]
-   Mongolian Support [mn]
-   Nepali Support [ne]
-   Northern Sotho Support [nso]
-   Norwegian Support [nb]
-   Occitan Support [oc]
-   Persian Support [fa]
-   Polish Support [pl]
-   Portuguese Support [pt]
-   Romanian Support [ro]
-   Russian Support [ru]
-   Sanskrit Support [sa]
-   Sardinian Support [sc]
-   Serbian Support [sr]
-   Sindhi Support [sd]
-   Slovak Support [sk]
-   Slovenian Support [sl]
-   Southern Ndebele Support [nr]
-   Southern Sotho Support [st]
-   Spanish Support [es]
-   Swahili Support [sw]
-   Swati Support [ss]
-   Swedish Support [sv]
-   Tagalog Support [tl]
-   Tetum Support [tet]
-   Tibetan Support [bo]
-   Tsonga Support [ts]
-   Tswana Support [tn]
-   Turkish Support [tr]
-   Turkmen Support [tk]
-   Ukrainian Support [uk]
-   Upper Sorbian Support [hsb]
-   Uzbek Support [uz]
-   Vietnamese Support [vi]
-   Walloon Support [wa]
-   Welsh Support [cy]
-   Xhosa Support [xh]
-   Zulu Support [zu]
 
 
 yum -y update
@@ -706,7 +773,7 @@ yum -y upgrade
 
 
 #function hhh () {
-cd /root/downs/
+cd $rtinst/
 tar xvjf iRedMail-0.8.3.tar.bz2
 cd iRedMail-0.8.3
 bash iRedMail.sh
@@ -718,7 +785,7 @@ bash iRedMail.sh
 
 #tar cvf ~/y.tar /var/cache/yum
 
-#rpm -ivh --force /root/downs/rvm-ruby-1.17.6-0.el6.noarch.rpm
+#rpm -ivh --force $rtinst/rvm-ruby-1.17.6-0.el6.noarch.rpm
 #rvm get head --auto
 #rvm pkg install openssl
 #rvm reinstall all --force
