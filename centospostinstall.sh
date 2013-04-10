@@ -141,6 +141,7 @@ function f_ethconf () {
       ethbro=$narra"255";
       ethnwk=$narra"0";
       f_date;
+      dnsnr=$(( $netnr + 1 ));
       mv $rtntdr"/"$phcard $rtsyn"/"$phcard"-"$v_date".old";
       mv /etc/resolv.conf $rtetc"/resolv.conf-"$v_date".old";
       mv /etc/resolv.conf $rtetc"/resolv.conf-"$v_date".old";
@@ -157,7 +158,7 @@ function f_ethconf () {
       echo "GATEWAY="$ethgwy""; echo "GATEWAY="$ethgwy"" >> $ecard;
       echo "NETWORK="$ethnwk""; echo "NETWORK="$ethnwk"" >> $ecard;
       echo "BROADCAST="$ethbro""; echo "BROADCAST="$ethbro"" >> $ecard;
-      echo "DNS1="$ethdn1""; echo "DNS1="$ethdn1"" >> $ecard;
+      echo "DNS"$dnsnr"="$ethdn1""; echo "DNS"$dnsnr"="$ethdn1"" >> $ecard;
       echo "NM_CONTROLLED=no"; echo "NM_CONTROLLED=no" >> $ecard;
       echo "USERCTL=no"; echo "USERCTL=no" >> $ecard;
       echo "DEFROUTE=yes"; echo "DEFROUTE=yes" >> $ecard;
